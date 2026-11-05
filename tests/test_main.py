@@ -1,16 +1,13 @@
 """Integration-style tests for the run flow (US1: idempotent upload)."""
 
+# pylint: disable=duplicate-code  # Tests intentionally mirror each other's setup.
 from pathlib import Path
 
 import main
-from PIL import Image
 
 
-def make_image(path: Path, color=(200, 30, 30)) -> None:
-    Image.new("RGB", (16, 12), color).save(path)
-
-
-def test_first_run_adds_every_image(tmp_path, capsys):
+def test_first_run_adds_every_image(tmp_path, capsys, make_image):
+    """The first run adds every image and records one ledger entry each."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -21,8 +18,8 @@ def test_first_run_adds_every_image(tmp_path, capsys):
     main.run(source, dest, record)
 
     out = capsys.readouterr().out
-    assert f"Added: a.png -> " in out
-    assert f"Added: b.jpg -> " in out
+    assert "Added: a.png -> " in out
+    assert "Added: b.jpg -> " in out
     assert "Done. Added 2, skipped 0, failed 0." in out
 
     entries = main.load_record(record)
@@ -37,7 +34,8 @@ def test_first_run_adds_every_image(tmp_path, capsys):
         assert (dest / f"{stem}_thumb.jpeg").is_file()
 
 
-def test_first_run_records_content_hash_of_source_files(tmp_path):
+def test_first_run_records_content_hash_of_source_files(tmp_path, make_image):
+    """Each ledger entry stores the SHA-256 hash of its source file."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -51,7 +49,8 @@ def test_first_run_records_content_hash_of_source_files(tmp_path):
     assert entries[0]["hash"] == main.hash_image(source / "a.png")
 
 
-def test_second_run_skips_everything_and_writes_nothing(tmp_path, capsys):
+def test_second_run_skips_everything_and_writes_nothing(tmp_path, capsys, make_image):
+    """A second run skips recorded images and writes no new files."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -74,7 +73,8 @@ def test_second_run_skips_everything_and_writes_nothing(tmp_path, capsys):
     assert record.read_text(encoding="utf-8") == ledger_before
 
 
-def test_incremental_add_only_adds_the_new_image(tmp_path, capsys):
+def test_incremental_add_only_adds_the_new_image(tmp_path, capsys, make_image):
+    """New images are added while previously recorded ones are skipped."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -89,7 +89,7 @@ def test_incremental_add_only_adds_the_new_image(tmp_path, capsys):
     main.run(source, dest, record)
     out = capsys.readouterr().out
 
-    assert f"Added: c.png -> " in out
+    assert "Added: c.png -> " in out
     assert "Skipped: a.png (already recorded)" in out
     assert "Skipped: b.jpg (already recorded)" in out
     assert "Done. Added 1, skipped 2, failed 0." in out
@@ -99,7 +99,8 @@ def test_incremental_add_only_adds_the_new_image(tmp_path, capsys):
     assert {entry["original_filename"] for entry in entries} == {"a.png", "b.jpg", "c.png"}
 
 
-def test_failed_copy_is_reported_and_not_recorded(tmp_path, capsys):
+def test_failed_copy_is_reported_and_not_recorded(tmp_path, capsys, make_image):
+    """Unreadable files report Failed and leave no ledger entry."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -110,7 +111,7 @@ def test_failed_copy_is_reported_and_not_recorded(tmp_path, capsys):
     main.run(source, dest, record)
 
     out = capsys.readouterr().out
-    assert f"Failed: broken.jpg (" in out
+    assert "Failed: broken.jpg (" in out
     assert "Done. Added 1, skipped 0, failed 1." in out
 
     entries = main.load_record(record)
@@ -118,7 +119,8 @@ def test_failed_copy_is_reported_and_not_recorded(tmp_path, capsys):
     assert entries[0]["original_filename"] == "a.png"
 
 
-def test_run_creates_missing_destination_directory(tmp_path):
+def test_run_creates_missing_destination_directory(tmp_path, make_image):
+    """run() creates the destination directory when it is missing."""
     source = tmp_path / "source"
     dest = tmp_path / "does-not-exist-yet"
     record = tmp_path / "added-images.json"

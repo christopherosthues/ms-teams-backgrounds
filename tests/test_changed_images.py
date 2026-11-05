@@ -1,17 +1,13 @@
 """Tests for changed-image detection (US3): identity is the content hash."""
 
+# pylint: disable=duplicate-code  # Tests intentionally mirror each other's setup.
 import json
-from pathlib import Path
 
 import main
-from PIL import Image
 
 
-def make_image(path: Path, color) -> None:
-    Image.new("RGB", (16, 12), color).save(path)
-
-
-def test_modified_image_is_re_added_alongside_prior_entry(tmp_path):
+def test_modified_image_is_re_added_alongside_prior_entry(tmp_path, make_image):
+    """A modified image is re-added while the prior entry is preserved."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -38,7 +34,8 @@ def test_modified_image_is_re_added_alongside_prior_entry(tmp_path):
     assert (dest / new_entry["mapped_name"]).is_file()
 
 
-def test_identical_content_different_filenames_added_once(tmp_path, capsys):
+def test_identical_content_different_filenames_added_once(tmp_path, capsys, make_image):
+    """Identical content under different filenames is added only once."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -56,7 +53,8 @@ def test_identical_content_different_filenames_added_once(tmp_path, capsys):
     assert len(entries) == 1
 
 
-def test_renamed_unchanged_image_is_not_re_added(tmp_path, capsys):
+def test_renamed_unchanged_image_is_not_re_added(tmp_path, capsys, make_image):
+    """Renaming without changing content does not re-add the image."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -72,7 +70,7 @@ def test_renamed_unchanged_image_is_not_re_added(tmp_path, capsys):
     main.run(source, dest, record)
     out = capsys.readouterr().out
 
-    assert f"Skipped: renamed.png (already recorded)" in out
+    assert "Skipped: renamed.png (already recorded)" in out
     entries = json.loads(record.read_text(encoding="utf-8"))["entries"]
     assert len(entries) == 1
     assert entries[0]["original_filename"] == "a.png"

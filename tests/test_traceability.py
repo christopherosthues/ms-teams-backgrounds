@@ -1,19 +1,16 @@
 """Tests for ledger traceability (US2): the record file alone maps every
 original image to the exact background in the Teams backgrounds folder."""
 
+# pylint: disable=duplicate-code  # Tests intentionally mirror each other's setup.
 import json
 from datetime import datetime
 from pathlib import Path
 
 import main
-from PIL import Image
 
 
-def make_image(path: Path, color) -> None:
-    Image.new("RGB", (16, 12), color).save(path)
-
-
-def test_ledger_entries_map_to_existing_files(tmp_path):
+def test_ledger_entries_map_to_existing_files(tmp_path, make_image):
+    """Every ledger entry maps to an existing JPEG and matching thumbnail."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -43,7 +40,8 @@ def test_ledger_entries_map_to_existing_files(tmp_path):
         assert (dest / f"{stem}_thumb.jpeg").is_file()
 
 
-def test_entry_field_set_is_exactly_the_recorded_fields(tmp_path):
+def test_entry_field_set_is_exactly_the_recorded_fields(tmp_path, make_image):
+    """Ledger entries contain exactly the recorded field set."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -58,7 +56,8 @@ def test_entry_field_set_is_exactly_the_recorded_fields(tmp_path):
     assert set(entries[0]) == {"hash", "original_filename", "mapped_name", "added_at"}
 
 
-def test_added_at_is_valid_iso_8601_when_present(tmp_path):
+def test_added_at_is_valid_iso_8601_when_present(tmp_path, make_image):
+    """The added_at field, when present, is valid ISO 8601."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"
@@ -73,7 +72,8 @@ def test_added_at_is_valid_iso_8601_when_present(tmp_path):
             datetime.fromisoformat(entry["added_at"])  # raises on invalid
 
 
-def test_ledger_is_pretty_printed_with_trailing_newline(tmp_path):
+def test_ledger_is_pretty_printed_with_trailing_newline(tmp_path, make_image):
+    """The ledger file is pretty-printed JSON with a trailing newline."""
     source = tmp_path / "source"
     dest = tmp_path / "dest"
     record = tmp_path / "added-images.json"

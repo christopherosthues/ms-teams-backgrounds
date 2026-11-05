@@ -2,7 +2,8 @@
 custom backgrounds folder, renaming them with UUIDs and converting them
 to JPEG (plus a matching ``_thumb.jpeg`` thumbnail).
 
-Destination: %LOCALAPPDATA%\\Packages\\MSTeams_8wekyb3d8bbwe\\LocalCache\\Microsoft\\MSTeams\\Backgrounds\\Uploads
+Destination: %LOCALAPPDATA%\\Packages\\MSTeams_8wekyb3d8bbwe\\LocalCache\\Microsoft\\
+MSTeams\\Backgrounds\\Uploads
 
 A persistent ledger at %APPDATA%\\ms-teams-backgrounds\\added-images.json
 records every image that has been added (content hash, original filename,
@@ -157,7 +158,7 @@ def process_image(image_path: Path, dest_dir: Path) -> str:
         rgb.save(full_path, format="JPEG", quality=JPEG_QUALITY)
 
         size = thumbnail_size(rgb.size, THUMB_BOX)
-        thumb = rgb.resize(size, Image.LANCZOS) if size != rgb.size else rgb.copy()
+        thumb = rgb.resize(size, Image.Resampling.LANCZOS) if size != rgb.size else rgb.copy()
         thumb.save(thumb_path, format="JPEG", quality=JPEG_QUALITY)
 
     return name
@@ -198,7 +199,7 @@ def run(source_dir: Path, dest_dir: Path, record_path: Path) -> None:
 
         try:
             name = process_image(image_path, dest_dir)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             print(f"Failed: {image_path.name} ({exc})")
             failed += 1
             continue
@@ -225,6 +226,7 @@ def run(source_dir: Path, dest_dir: Path, record_path: Path) -> None:
 
 
 def main() -> None:
+    """Parse CLI arguments, validate the source directory and run."""
     parser = argparse.ArgumentParser(
         description="Copy images to the new Microsoft Teams backgrounds folder."
     )
@@ -233,7 +235,7 @@ def main() -> None:
         nargs="?",
         type=Path,
         default=Path(__file__).resolve().parent / "backgrounds",
-        help=f"Source directory containing images (default: {{script dir}}/backgrounds)",
+        help="Source directory containing images (default: {script dir}/backgrounds)",
     )
     args = parser.parse_args()
 
